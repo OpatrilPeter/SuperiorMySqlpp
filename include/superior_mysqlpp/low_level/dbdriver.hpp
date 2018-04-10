@@ -818,7 +818,7 @@ namespace SuperiorMySqlpp { namespace LowLevel
                             bool fixed = true;
                             for (size_t i= 0; i < resultBindingsSize; ++i)
                             {
-                                auto &&it = &resultBindingsPtr[resultBindingsSize];
+                                auto &&it = &resultBindingsPtr[i];
                                 if (it->error == &it->error_value)
                                 {
                                     if (it->error_value)

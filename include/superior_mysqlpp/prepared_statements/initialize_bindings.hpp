@@ -12,6 +12,11 @@
 #include <superior_mysqlpp/types/decimal_data.hpp>
 #include <superior_mysqlpp/types/nullable.hpp>
 
+#include <superior_mysqlpp/low_level/dbdriver.hpp>
+#include <superior_mysqlpp/prepared_statements/dynamic_storage.hpp>
+#include <memory>
+#include <tuple>
+
 namespace SuperiorMySqlpp
 {
     /*
@@ -37,6 +42,11 @@ namespace SuperiorMySqlpp
          */
         template<>
         struct CanBindAsParam<BindingTypes::String, std::string> : std::true_type {};
+
+        template<>
+        struct CanBindAsResult<BindingTypes::String, std::string> : std::true_type {};
+        template<>
+        struct CanBindAsResult<BindingTypes::Blob, std::vector<char>> : std::true_type {};
 
 
         /**
@@ -221,6 +231,15 @@ namespace SuperiorMySqlpp
             binding.length = &string.counterRef();
         }
 
+        // std::string specialization
+        inline void initializeResultBinding(MYSQL_BIND& binding, std::string& string)
+        {
+            binding.buffer = const_cast<char *>(string.data()); // Hacking away const, as nonconst data() is not in C++14
+            binding.buffer_type = detail::toMysqlEnum(FieldTypes::String);
+            binding.buffer_length = string.size(); // NOT string::capacity, as C client cannot resize by itself
+            //binding.length = &string.counterRef(); // Length is stored in companion dynamic handler and is set from elsewhere
+        }
+
         /**
          * Result binding initialization specialization for types bindable into SQL type Decimal
          */
@@ -243,6 +262,15 @@ namespace SuperiorMySqlpp
             binding.buffer_type = detail::toMysqlEnum(FieldTypes::Blob);
             binding.buffer_length = blob.maxSize();
             binding.length = &blob.counterRef();
+        }
+
+        // Specialization for std::vector as blob
+        inline void initializeResultBinding(MYSQL_BIND& binding, std::vector<char>& blob)
+        {
+            binding.buffer = blob.data();
+            binding.buffer_type = detail::toMysqlEnum(FieldTypes::Blob);
+            binding.buffer_length = blob.size(); // NOT capacity
+            //binding.length = &blob.counterRef(); // Is set from elsewhere
         }
 
         /**
@@ -385,11 +413,6 @@ namespace SuperiorMySqlpp
             InitializeBindingsImpl<isParamBinding, sizeof...(Types)>::call(bindings, data);
         }
 
-#include <superior_mysqlpp/low_level/dbdriver.hpp>
-#include <superior_mysqlpp/prepared_statements/dynamic_storage.hpp>
-#include <memory>
-#include <tuple>
-
         // Recursive approach
         template<size_t index>
         struct InitializeDynamicHandlersImpl {
@@ -425,6 +448,8 @@ namespace SuperiorMySqlpp
 
         template<typename... Types>
         inline void initializeDynamicHandlers(LowLevel::DBDriver::Statement &stmt, std::tuple<Types...> &data) {
+            if (sizeof...(Types))
+                stmt.dynamicHandlers.resize(sizeof...(Types));
             InitializeDynamicHandlersImpl<sizeof...(Types)>::call(stmt, data);
         }
     }

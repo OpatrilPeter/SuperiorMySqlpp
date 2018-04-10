@@ -51,6 +51,7 @@ public:
     bool resize() override {
         assert(column_length > bind.buffer_length); // Sanity check for now, as different option is probably an error
         container.resize(column_length);
+        bind.buffer = const_cast<char *>(container.data()); // TODO: Done because nonconst version is not in C++14
         bind.buffer_length = column_length;
         return true; //TODO: return void, do exception
     }
@@ -69,6 +70,7 @@ public:
     bool resize() override {
         assert(column_length > bind.buffer_length); // Sanity check for now, as different option is probably an error
         container.resize(column_length);
+        bind.buffer = container.data();
         bind.buffer_length = column_length;
         return true;
     }

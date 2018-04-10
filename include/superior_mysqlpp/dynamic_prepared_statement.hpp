@@ -21,6 +21,7 @@
 #include <superior_mysqlpp/low_level/dbdriver.hpp>
 #include <superior_mysqlpp/connection_def.hpp>
 #include <superior_mysqlpp/types/nullable.hpp>
+#include <superior_mysqlpp/prepared_statements/dynamic_storage.hpp>
 
 namespace SuperiorMySqlpp
 {
@@ -43,6 +44,9 @@ namespace SuperiorMySqlpp
                 throw OutOfRange("Param result index " + std::to_string(index) + " >= bindings size " + std::to_string(resultBindings.size()));
             }
             detail::initializeResultBinding(resultBindings[index], value);
+            if (DynamicStorage<T>::isDynamic) {
+                this->statement.dynamicHandlers[index] = std::make_unique<DynamicStorage<T>>(value, resultBindings[index]);
+            }
         }
 
         void throwIfStatementNotExecuted() const
@@ -141,6 +145,7 @@ namespace SuperiorMySqlpp
             if (resultFieldCount > 0)
             {
                 resultBindings.resize(resultFieldCount);
+                this->statement.dynamicHandlers.resize(resultFieldCount);
             }
 
             this->storeOrUse();

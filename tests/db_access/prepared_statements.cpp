@@ -540,6 +540,17 @@ go_bandit([](){
             AssertThrows(MysqlDataTruncatedError, preparedStatement.fetch());
         });
 
+        it("can dynamically resize on truncation", [&](){
+            // TODO: std::string needs a way to reserve memory
+            auto preparedStatement = connection.makePreparedStatement<ResultBindings<std::string>>(
+                "SELECT `data` FROM `test_superior_sqlpp`.`truncation_table`"
+            );
+            preparedStatement.setUpdateMaxLengthOnStore(true); // TODO: do always for dynamics
+            preparedStatement.execute();
+            preparedStatement.fetch();
+            AssertThat(std::get<0>(preparedStatement.getResult()), Equals("001100002412"));
+        });
+
         it("can avoid truncation errors", [&](){
             // 1. method - store result and allocate buffers before fetch
             {
