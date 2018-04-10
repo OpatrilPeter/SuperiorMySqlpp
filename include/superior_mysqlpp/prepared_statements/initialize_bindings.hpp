@@ -384,6 +384,49 @@ namespace SuperiorMySqlpp
         {
             InitializeBindingsImpl<isParamBinding, sizeof...(Types)>::call(bindings, data);
         }
+
+#include <superior_mysqlpp/low_level/dbdriver.hpp>
+#include <superior_mysqlpp/prepared_statements/dynamic_storage.hpp>
+#include <memory>
+#include <tuple>
+
+        // Recursive approach
+        template<size_t index>
+        struct InitializeDynamicHandlersImpl {
+            template<typename... Types>
+            static inline void call(LowLevel::DBDriver::Statement &stmt, std::tuple<Types...> &data) {
+                InitializeDynamicHandlersImpl<index-1>::call(stmt, data);
+                using elemType = typename std::tuple_element_t<index-1,std::tuple<Types...>>;
+                if (DynamicStorage<elemType>::isDynamic) {
+                    stmt.dynamicHandlers[index-1] = std::make_unique<DynamicStorage<elemType>>(std::get<index-1>(data),stmt.statementPtr->bind[index-1]);
+                }
+            }
+        };
+
+        template<>
+        struct InitializeDynamicHandlersImpl<1> {
+            template<typename... Types>
+            static inline void call(LowLevel::DBDriver::Statement &stmt, std::tuple<Types...> &data) {
+                using elemType = typename std::tuple_element_t<0,std::tuple<Types...>>;
+                if (DynamicStorage<elemType>::isDynamic) {
+                    stmt.dynamicHandlers[0] = std::make_unique<DynamicStorage<elemType>>(std::get<0>(data),stmt.statementPtr->bind[0]);
+                }
+            }
+        };
+
+        // Special case for empty bindings
+        template<>
+        struct InitializeDynamicHandlersImpl<0> {
+            template<typename... Types>
+            static inline void call(LowLevel::DBDriver::Statement &, std::tuple<Types...> &) {
+            }
+        };
+
+
+        template<typename... Types>
+        inline void initializeDynamicHandlers(LowLevel::DBDriver::Statement &stmt, std::tuple<Types...> &data) {
+            InitializeDynamicHandlersImpl<sizeof...(Types)>::call(stmt, data);
+        }
     }
 }
 

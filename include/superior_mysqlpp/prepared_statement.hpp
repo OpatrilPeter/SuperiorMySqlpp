@@ -445,6 +445,7 @@ namespace SuperiorMySqlpp
 
                 // TODO: check if this might be cached when calling execute multiple times
                 this->statement.bindResult(resultBindings.bindings.data());
+                detail::initializeDynamicHandlers(this->statement, resultBindings.data);
             }
 
             this->storeOrUse();

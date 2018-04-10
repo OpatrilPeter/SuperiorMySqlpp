@@ -22,6 +22,7 @@
 #include <superior_mysqlpp/logging.hpp>
 #include <superior_mysqlpp/exceptions.hpp>
 #include <superior_mysqlpp/utils.hpp>
+#include <superior_mysqlpp/prepared_statements/dynamic_storage.hpp>
 #include <superior_mysqlpp/types/string_view.hpp>
 #include <superior_mysqlpp/low_level/mysql_hacks.hpp>
 
@@ -621,11 +622,17 @@ namespace SuperiorMySqlpp { namespace LowLevel
          */
         class Statement
         {
-        private:
+        //private: WIP
+        public:
             MYSQL_STMT* statementPtr;
+        private:
             std::uint_fast64_t driverId;
             std::uint_fast64_t id;
             Loggers::ConstPointer_t loggerPtr;
+
+        public: // WIP
+            std::vector<std::unique_ptr<DynamicStorageBase>> dynamicHandlers;
+        private:
 
             static auto& getGlobalIdRef()
             {
@@ -785,6 +792,7 @@ namespace SuperiorMySqlpp { namespace LowLevel
 
             FetchStatus fetchWithStatus()
             {
+                encore:
                 auto result = mysql_stmt_fetch(statementPtr);
                 switch (result)
                 {
@@ -799,7 +807,36 @@ namespace SuperiorMySqlpp { namespace LowLevel
                         mysql_stmt_error(statementPtr), mysql_stmt_errno(statementPtr)};
 
                     case MYSQL_DATA_TRUNCATED:
-                        return FetchStatus::DataTruncated;
+                    {
+                            auto&& resultBindingsPtr = statementPtr->bind;
+                            auto resultBindingsSize = statementPtr->field_count;
+
+                            if (!dynamicHandlers.size()) // Sanity check for now
+                                return FetchStatus::DataTruncated;
+                            assert(dynamicHandlers.size() == resultBindingsSize); // Sanity check
+
+                            bool fixed = true;
+                            for (size_t i= 0; i < resultBindingsSize; ++i)
+                            {
+                                auto &&it = &resultBindingsPtr[resultBindingsSize];
+                                if (it->error == &it->error_value)
+                                {
+                                    if (it->error_value)
+                                    {
+                                        // This column is truncated, try resize
+                                        if (dynamicHandlers[i]) { // If we have resizer
+                                            dynamicHandlers[i]->resize();
+                                        }
+                                        else
+                                            fixed = false;
+                                    }
+                                }
+                            }
+                            if (!fixed)
+                                return FetchStatus::DataTruncated;
+                            else
+                                goto encore; // Tail recursion (WIP)
+                    }
 
                     default:
                         throw LogicError{"Internal error!"};
