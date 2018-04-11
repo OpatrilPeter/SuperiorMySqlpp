@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <cstdio> //DBG
 
 namespace SuperiorMySqlpp {
 
@@ -50,8 +51,11 @@ public:
 
     bool resize() override {
         assert(column_length > bind.buffer_length); // Sanity check for now, as different option is probably an error
-        container.resize(column_length);
-        bind.buffer = const_cast<char *>(container.data()); // TODO: Done because nonconst version is not in C++14
+        container.resize(column_length); // TODO: trailing zero
+        fprintf(stderr,"Column resize %lu > %lu\n", bind.buffer_length, column_length);
+        // TODO: Rewrite as &container[0], other one is technically UB by standard (if practically identical)
+        //bind.buffer = const_cast<char *>(container.data()); // TODO: Done because nonconst version is not in C++14
+        bind.buffer = &container[0]; // TODO: Done because nonconst version is not in C++14
         bind.buffer_length = column_length;
         return true; //TODO: return void, do exception
     }

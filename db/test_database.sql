@@ -94,7 +94,7 @@ DROP TABLE IF EXISTS `truncation_table`;
 CREATE TABLE `truncation_table` (
     `data` BLOB(100) NOT NULL
 )  ENGINE=INNODB DEFAULT CHARSET=UTF8;
-INSERT INTO `truncation_table` (`data`) VALUES (x'001100002412');
+INSERT INTO `truncation_table` (`data`) VALUES (x'21202120212000');
 INSERT INTO `truncation_table` (`data`) VALUES (x'42004100424242420042');
 
 DROP TABLE IF EXISTS `simple_null`;
