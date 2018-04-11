@@ -548,7 +548,8 @@ go_bandit([](){
             preparedStatement.setUpdateMaxLengthOnStore(true); // TODO: do always for dynamics
             preparedStatement.execute();
             preparedStatement.fetch();
-            AssertThat(std::get<0>(preparedStatement.getResult()), Equals("001100002412"));
+            auto &str = std::get<0>(preparedStatement.getResult());
+            AssertThat(!strcmp(str.c_str(),"aaa"), IsTrue());
         });
 
         it("can avoid truncation errors", [&](){

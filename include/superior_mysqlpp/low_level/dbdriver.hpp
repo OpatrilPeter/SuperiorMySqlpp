@@ -792,7 +792,6 @@ namespace SuperiorMySqlpp { namespace LowLevel
 
             FetchStatus fetchWithStatus()
             {
-                encore:
                 auto result = mysql_stmt_fetch(statementPtr);
                 switch (result)
                 {
@@ -826,6 +825,7 @@ namespace SuperiorMySqlpp { namespace LowLevel
                                         // This column is truncated, try resize
                                         if (dynamicHandlers[i]) { // If we have resizer
                                             dynamicHandlers[i]->resize();
+                                            fetchColumn(resultBindingsPtr, i, 0);
                                         }
                                         else
                                             fixed = false;
@@ -835,7 +835,7 @@ namespace SuperiorMySqlpp { namespace LowLevel
                             if (!fixed)
                                 return FetchStatus::DataTruncated;
                             else
-                                goto encore; // Tail recursion (WIP)
+                                return FetchStatus::Ok;
                     }
 
                     default:
